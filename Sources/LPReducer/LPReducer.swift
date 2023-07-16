@@ -106,16 +106,20 @@ public final class Store<R: Reducer>: ObservableObject {
             /// calling a service from the internet, this is suppose to be executed outside of the
             /// `MainActor` scope.
             /// Once this background process finishes it will trigger another action back on the `MainActor` context
-        case let .task(nextAction):
-            Task.detached(priority: .background) {
+        case let .task(cancellableId, nextAction):
+            let task = Task.detached(priority: .background) {
+                guard Task.isCancelled else { return }
                 await self.send(nextAction())
             }
+            taskCancellables[cancellableId] = task
             /// this work exactly the same way as `.task(nextAction)`
             /// but without trigger any other action
-        case let .run(toExecute):
-            Task.detached(priority: .background) {
+        case let .run(cancellableId, toExecute):
+            let task = Task.detached(priority: .background) {
+                guard Task.isCancelled else { return }
                 await toExecute()
             }
+            taskCancellables[cancellableId] = task
             /// This one wil trigger an new action in the `MainActor` context, recommended for synchronous processes
         case let .action(act):
             send(act)
@@ -225,8 +229,8 @@ public indirect enum Operation<Action> {
                        @Sendable (Sendable) async -> Action)
     case syncMerge(Operation<Action>, Operation<Action>)
     case asyncMerge(Operation<Action>, Operation<Action>)
-    case task(@Sendable () async -> Action)
-    case run(() async -> Void)
+    case task(cancellableId: AnyHashable, @Sendable () async -> Action)
+    case run(cancellableId: AnyHashable, () async -> Void)
     case action(Action)
     case timer(every: TimeInterval,
                on: RunLoop,
