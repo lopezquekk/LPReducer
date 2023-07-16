@@ -3,13 +3,18 @@ import SwiftUI
 import Combine
 
 @dynamicMemberLookup
-/// The dynamic store, is a store which contains the `state`, the `reducer` and the `actions`
+/// Store, is a class which owns the `state`, the `reducer` and the `actions`
+@MainActor
 public final class Store<R: Reducer>: ObservableObject {
     let reducer: R = R.init()
     private var cancellables: [AnyHashable: AnyCancellable] = [:]
     private var taskCancellables: [AnyHashable: Task<Void, Never>] = [:]
     
     private var provisionalState: R.State
+    
+    /// The state will look for changes comparing the `newState` and `oldState`
+    /// if so, `objectWillChange.send()` is triggered and the view will be refreshed
+    /// since the `state` is private for setting you won't be able to modifying from another place different from the reducer function.
     private(set) var state: R.State {
         didSet {
             if state != oldValue {
@@ -32,7 +37,13 @@ public final class Store<R: Reducer>: ObservableObject {
         #endif
     }
     
-    @MainActor
+    
+    /// This function manages binding variables between reducer and the view
+    /// - Parameter keyPath: The Path from the state, avoiding reusing the word `state`
+    /// - Returns: a controled binding variable
+    /// ``` swift
+    ///     Text(store.binding(\.myStateText))
+    /// ```
     public func binding<T>(_ keyPath: WritableKeyPath<R.State, T>) -> Binding<T> {
         Binding {
             self.provisionalState[keyPath: keyPath]
@@ -42,7 +53,20 @@ public final class Store<R: Reducer>: ObservableObject {
         }
     }
     
-    @MainActor
+    
+    /// This function manages binding variables between reducer and the view
+    /// - Parameters:
+    ///   - keyPath: The Path from the state, avoiding reusing the word `state`
+    ///   - action: an Action for tracking the binding changes.
+    /// - Returns: a controled binding variable
+    /// ``` swift
+    ///     Text(store.binding(\.myStateText), .myAction)
+    ///
+    ///     //.... The Store
+    ///
+    ///     case .myAction:
+    ///         print(state.myStateText)
+    /// ```
     public func binding<T>(_ keyPath: WritableKeyPath<R.State, T>, action: R.Action) -> Binding<T> {
         Binding {
             self.provisionalState[keyPath: keyPath]
@@ -53,7 +77,6 @@ public final class Store<R: Reducer>: ObservableObject {
         }
     }
     
-    @MainActor
     func send(_ action: R.Action) {
         let operation = reducer.reduce(into: &provisionalState, action)
         state = provisionalState
@@ -62,8 +85,6 @@ public final class Store<R: Reducer>: ObservableObject {
         }
     }
     
-    
-    @MainActor
     private func resolveOperation(_ operation: Operation<R.Action>) async {
         switch operation {
             /// `.asyncSequence`
@@ -164,7 +185,6 @@ public final class Store<R: Reducer>: ObservableObject {
     }
 }
 
-
 /// Reducer Protocol
 ///
 /// Use this protocol for conforming a presentation entity
@@ -211,7 +231,6 @@ public final class Store<R: Reducer>: ObservableObject {
 ///         }
 ///     }
 ///}
-///
 /// ```
 public protocol Reducer<State, Action> {
     associatedtype Action
@@ -219,7 +238,7 @@ public protocol Reducer<State, Action> {
     
     init()
     
-    /// Everytime the view or any operation sends an action this function will be triggered
+    /// Everytime the view or any operation sends an action, this function is triggered
     @MainActor func reduce(into state: inout State, _ action: Action) -> Operation<Action>
 }
 
