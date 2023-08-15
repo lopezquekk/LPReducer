@@ -242,11 +242,19 @@ public protocol Reducer<State, Action> {
     @MainActor func reduce(into state: inout State, _ action: Action) -> Operation<Action>
 }
 
+@dynamicMemberLookup
 public protocol StateProtocol {
     associatedtype StaticState
     associatedtype RefreshState: Equatable
     
     var refreshState: RefreshState { set get }
+    var staticState: StaticState { set get }
+}
+
+extension StateProtocol {
+    subscript<T>(dynamicMember keyPath: WritableKeyPath<RefreshState, T>) -> T {
+        refreshState[keyPath: keyPath]
+    }
 }
 
 public indirect enum Operation<Action> {
