@@ -5,21 +5,21 @@ A Swift-way Reducer to control the view state safely
 
 ## Overview
 
-Hace algun tiempo hemos venido cocechando la idea de cambiar algunos conceptos que damos por snetados en el desarrollo en swift, las arquitecturas que usabamos o usamos con UIKit no consideramos que apliquen o que en realidad sean igual de efectivas en SwiftUI, cambiar de paradigma también significa cambiar de herramientas y también empezar a cambiar nuestra forma de ver.
+Some time ago, I've been entertaining the idea of changing certain concepts that we've taken for granted in Swift development. The architectures we used or use with UIKit don't seem to apply or be equally effective in SwiftUI. Shifting paradigms also entails changing tools and adjusting our perspective.
 
-Este es un primer paso para pasar de una arquitecturea enfocada en `closure/eventos` a pasar a una arquitectura `orientada a estados`.
+This marks the initial step towards transitioning from a closure/event-focused architecture to a state-driven architecture.
 
-En las arquitecturas orientadas a estados los modelos de MVVM/VIPER... tienen varios problemas los cuales creemos se pueden solucionar teniendo un control estricto del estado.
+In state-driven architectures, MVVM/VIPER... models face several issues that we believe can be resolved by maintaining strict control over the state.
 
-Problema No 1: El estado no está unificado, en muchos proyectos UIKit este problema es recurrente pero realmente no era considerado un problema ya que como una variable maneja una independencia con relación a las otras solo bastaba con definirlas una después de la otra.
+Issue No. 1: State disunity. In many UIKit projects, this problem recurs, but it wasn't considered significant because each variable's independence from the others meant that defining them one after another sufficed.
 
-Problema No 2: Multiples fuentes de la verdad
+Issue No. 2: Multiple sources of truth.
 
-Problema No 3: Modificacion de las variables en diferentes hilos
+Issue No. 3: Variable modifications across different threads.
 
-Problema No 4: Un flujo no muy claro en relación a la lógica de negocio vs capa de presentación
+Issue No. 4: Unclear flow between business logic and presentation layer.
 
-Ahora swift ha cambiado su paradigma pero lejos de solucionar los problemas para muchos equipos esto ha sido un problema aun mas grande, no por falta de conocimiento pero sí por venir acostumbrados a un antiguo paradigma.
+Swift has now shifted its paradigm, but rather than solving problems, for many teams, this has turned into an even greater challenge. This isn't due to a lack of knowledge but rather because of the deeply ingrained familiarity with the old paradigm.
 
 ```swift
 
@@ -28,8 +28,21 @@ struct TodoReducer: Reducer {
     var api: ANYAPIYOUUSE
 
     struct State: Equatable {
-        var list: [Todo] = []
-        var selectedTodo: Todo?
+/// changes on this struct/var will affect the UI and the view will refresh
+/// you can access to this state without using the keyword ´refreshState´
+        var refreshState: RefreshState = RefreshState()
+/// changes on this struct/var won't affect the UI and the view won't refresh
+        var staticState: StaticState = StaticState()
+
+/// changes on this struct/var won't affect the UI and the view won't refresh
+        struct StaticState: Equatable {
+            var numberOfRows = 0
+        }
+        
+        struct RefreshState: Equatable {
+            var list: [Todo] = []
+            var selectedTodo: Todo?
+        }
     }
 
     enum Action {
