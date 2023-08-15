@@ -88,11 +88,11 @@ final class TestableStore<R: Reducer>: ObservableObject {
             break
         case let .task(nextAction):
             Task.detached(priority: .background) {
-                await self.send(nextAction())
+                await self.send(nextAction as! R.Action)
             }
         case let .run(toExecute):
             Task.detached(priority: .background) {
-                await toExecute()
+                await toExecute
             }
         case let .action(act):
             await send(act)

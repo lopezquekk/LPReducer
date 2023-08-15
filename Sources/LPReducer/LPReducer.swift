@@ -17,7 +17,7 @@ public final class Store<R: Reducer>: ObservableObject {
     /// since the `state` is private for setting you won't be able to modifying from another place different from the reducer function.
     private(set) var state: R.State {
         didSet {
-            if state != oldValue {
+            if state.refreshState != oldValue.refreshState {
                 objectWillChange.send()
             }
         }
@@ -234,12 +234,19 @@ public final class Store<R: Reducer>: ObservableObject {
 /// ```
 public protocol Reducer<State, Action> {
     associatedtype Action
-    associatedtype State: Equatable
+    associatedtype State: Equatable, StateProtocol
     
     init()
     
     /// Everytime the view or any operation sends an action, this function is triggered
     @MainActor func reduce(into state: inout State, _ action: Action) -> Operation<Action>
+}
+
+public protocol StateProtocol {
+    associatedtype StaticState
+    associatedtype RefreshState: Equatable
+    
+    var refreshState: RefreshState { set get }
 }
 
 public indirect enum Operation<Action> {
